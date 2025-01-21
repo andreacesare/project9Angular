@@ -41,8 +41,9 @@
 //   }
 // }
 
-import { Component } from '@angular/core';
-import {FormControl, FormGroup, ReactiveFormsModule} from "@angular/forms";
+import {Component, DestroyRef, inject, OnInit} from '@angular/core';
+import {FormControl, FormGroup, ReactiveFormsModule, Validators} from "@angular/forms";
+import {debounceTime} from "rxjs";
 
 @Component({
   selector: 'app-login',
@@ -53,11 +54,34 @@ import {FormControl, FormGroup, ReactiveFormsModule} from "@angular/forms";
     ReactiveFormsModule
   ]
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
+  private destroyRef=inject(DestroyRef);
   form=new FormGroup({
-    email:new FormControl(''),
-    password: new FormControl('')
-  })
+    email:new FormControl('',{
+      validators: [Validators.email, Validators.required],
+    }),
+    password: new FormControl('',[Validators.required,Validators.minLength(6)])
+  });
+
+  get emailInvalid(){
+    return( this.form.controls.email.touched &&
+          this.form.controls.email.invalid &&
+      this.form.controls.email.dirty
+    );
+  }
+  get passInvalid(){
+    return( this.form.controls.password.touched &&
+      this.form.controls.password.invalid &&
+      this.form.controls.password.dirty
+    );
+  }
+
+  ngOnInit(){
+    const sub=this.form.valueChanges.pipe(debounceTime(500)).subscribe({
+      next: value => {window.localStorage.setItem("email", JSON.stringify(value.email));},
+    })
+    this.destroyRef.onDestroy(()=>sub.unsubscribe());
+  }
 
   onSubmit(){
 
